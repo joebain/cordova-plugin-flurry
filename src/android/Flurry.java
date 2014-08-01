@@ -39,6 +39,7 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
   private FlurryAdSize adSize;
   
   private boolean adShow = true;
+  private boolean showAdOnReceive = true;
   
   private static final String adTopBanner = "TOP_BANNER";
   private static final String adBottomBanner = "BOTTOM_BANNER";
@@ -60,7 +61,8 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
   private static final int	POSITION_AT_TOP_ARG_INDEX = 2;
 
   private static final int	IS_TESTING_ARG_INDEX = 0;
-  private static final int	EXTRAS_ARG_INDEX = 1;
+  private static final int  SHOW_AD_ON_RECEIVE_ARG_INDEX = 1;
+  private static final int	EXTRAS_ARG_INDEX = 2;
 
   private static final int	SHOW_AD_ARG_INDEX = 0;
 
@@ -129,13 +131,6 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
       publisherId = inputs.getString( PUBLISHER_ID_ARG_INDEX );
       this.bannerAtTop = inputs.getBoolean( POSITION_AT_TOP_ARG_INDEX );
       this.adSize = adSizeFromString( inputs.getString( AD_SIZE_ARG_INDEX ) );
-      
-      // remove the code below, if you do not want to donate 2% to the author of this plugin
-      int donation_percentage = 2;
-      Random rand = new Random();
-      if( rand.nextInt(100) < donation_percentage) {
-    	  publisherId = "G56KN4J49YT66CFRD5K6";
-      }
 
     } catch (JSONException exception) {
       Log.w(LOGTAG, String.format("Got JSON Exception: %s", exception.getMessage()));
@@ -259,6 +254,7 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
     try {
       isTesting = inputs.getBoolean( IS_TESTING_ARG_INDEX );
       inputExtras = inputs.getJSONObject( EXTRAS_ARG_INDEX );
+      showAdOnReceive = inputs.getBoolean ( SHOW_AD_ON_RECEIVE_ARG_INDEX );
 
     } catch (JSONException exception) {
       Log.w(LOGTAG, String.format("Got JSON Exception: %s", exception.getMessage()));
@@ -320,9 +316,11 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
     	  	cordova.getThreadPool().execute(new Runnable(){
     		    @Override
     		    public void run() {
-    				FlurryAds.fetchAd(cordova.getActivity(), adSpace, adView, adSize);
+    		    	FlurryAds.fetchAd(cordova.getActivity(), adSpace, adView, adSize);
     		    }
     	  	});
+        } else {
+        	 FlurryAds.displayAd(cordova.getActivity(), adSpace, adView);
         }
     }
 
@@ -485,7 +483,9 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
 		public void spaceDidReceiveAd(String arg0) {
 		      Log.w("Flurry", String.format("spaceDidReceiveAd, for %s, now show it", arg0));
 
-			  FlurryAds.displayAd(cordova.getActivity(), adSpace, adView);
+		      if (showAdOnReceive) {
+		          FlurryAds.displayAd(cordova.getActivity(), adSpace, adView);
+			  }
 
 		      webView.post(new Runnable() {
 		    	  @Override

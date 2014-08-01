@@ -177,6 +177,7 @@ flurryExport.requestAd =
 function(options, successCallback, failureCallback) {
   var defaults = {
     'isTesting': false,
+	'showAdOnReceive': true,
     'extras': {}
   };
 
@@ -191,7 +192,7 @@ function(options, successCallback, failureCallback) {
       failureCallback,
       'Flurry',
       'requestAd',
-      [defaults['isTesting'], defaults['extras']]
+      [defaults['isTesting'], defaults['showAdOnReceive'], defaults['extras']]
   );
 };
 
@@ -223,6 +224,7 @@ flurryExport.requestInterstitialAd =
 function(options, successCallback, failureCallback) {
   var defaults = {
     'isTesting': false,
+	'showAdOnReceive': true,
     'extras': {}
   };
 
@@ -237,7 +239,7 @@ function(options, successCallback, failureCallback) {
       failureCallback,
       'Flurry',
       'requestInterstitialAd',
-      [defaults['isTesting'], defaults['extras']]
+      [defaults['isTesting'], defaults['showAdOnReceive'], defaults['extras']]
   );
 };
 
