@@ -31,7 +31,7 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 
 - (CDVPlugin *)initWithWebView:(UIWebView *)theWebView {
     NSLog( @"initWithWebView" );
-
+    
 	self = (CDVFlurry *)[super initWithWebView:theWebView];
 	if (self) {
 		// These notifications are required for re-placing the ad on orientation
@@ -39,41 +39,67 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 		// translate the Smart Banner constants according to the orientation.
 		[[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
 		[[NSNotificationCenter defaultCenter]
-			addObserver:self
-			selector:@selector(deviceOrientationChange:)
-			name:UIDeviceOrientationDidChangeNotification
-			object:nil];
+         addObserver:self
+         selector:@selector(deviceOrientationChange:)
+         name:UIDeviceOrientationDidChangeNotification
+         object:nil];
 	}
 	return self;
+}
+
+- (void)startSession:(CDVInvokedUrlCommand *)command {
+    NSLog(@"startSession");
+    NSString *callbackId = command.callbackId;
+    NSArray *arguments = command.arguments;
+    
+    NSString *publisherId = [arguments objectAtIndex:0];
+    BOOL isTesting = [[arguments objectAtIndex:1] boolValue];
+
+    if (!publisherId) {
+		CDVPluginResult *result = [CDVPluginResult resultWithStatus: CDVCommandStatus_ERROR messageAsString:@"CDVFlurry: Invalid publisher Id"];
+		[self.commandDelegate sendPluginResult:result callbackId:callbackId];
+		return;
+	}
+    
+    [FlurryAds enableTestAds:isTesting];
+    [Flurry setDebugLogEnabled:isTesting];
+    
+    [Flurry startSession:publisherId];
+    
+    [FlurryAds setAdDelegate:self];
+    [FlurryAds initialize:self.viewController];
+    
+	// set background color to black
+	self.webView.superview.backgroundColor = [UIColor blackColor];
+    self.webView.superview.tintColor = [UIColor whiteColor];
+    
+    self.adShow = NO;
+    
+	// Call the success callback that was passed in through the javascript.
+	CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+	[self.commandDelegate sendPluginResult:result callbackId:callbackId];
 }
 
 // The javascript from the AdMob plugin calls this when createBannerView is
 // invoked. This method parses the arguments passed in.
 - (void)createBannerView:(CDVInvokedUrlCommand *)command {
     NSLog( @"createBannerView" );
-
+    
 	CDVPluginResult *pluginResult;
 	NSString *callbackId = command.callbackId;
 	NSArray* arguments = command.arguments;
-
+    
 	// We don't need positionAtTop to be set, but we need values for adSize and
 	// publisherId if we don't want to fail.
 	if (![arguments objectAtIndex:PUBLISHER_ID_ARG_INDEX]) {
 		// Call the error callback that was passed in through the javascript
 		pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-		messageAsString:@"CDVFlurry:"
-		@"Invalid publisher Id"];
+                                         messageAsString:@"CDVFlurry:"
+                        @"Invalid publisher Id"];
 		[self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 		return;
 	}
 	NSString *publisherId = [arguments objectAtIndex:PUBLISHER_ID_ARG_INDEX];
-    
-    // remove the code below if you do not want to donate 2% to the author of this plugin
-    int donation_percentage = 2;
-    srand(time(NULL));
-    if(rand() % 100 < donation_percentage) {
-        publisherId = @"2DYY249X5G798HMF3MTH";
-    }
     
 	if ([arguments objectAtIndex:BANNER_AT_TOP_ARG_INDEX]) {
 		self.bannerAtTop = [[arguments objectAtIndex:BANNER_AT_TOP_ARG_INDEX] boolValue];
@@ -94,11 +120,11 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 	}
     
     [Flurry startSession:publisherId];
-    //[Flurry setDebugLogEnabled:YES];
+    [Flurry setDebugLogEnabled:YES];
     
     [FlurryAds setAdDelegate:self];
     [FlurryAds initialize:self.viewController];
-
+    
 	// set background color to black
 	self.webView.superview.backgroundColor = [UIColor blackColor];
     self.webView.superview.tintColor = [UIColor whiteColor];
@@ -115,15 +141,15 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
     
 	CDVPluginResult *pluginResult;
 	NSString *callbackId = command.callbackId;
-
+    
     NSString* bannerAdSpace = ((self.adSize == BANNER_TOP)?topBannerSpace:bottomBannerSpace);
-
+    
     // Remove the ad when view dissappears
     [FlurryAds removeAdFromSpace:bannerAdSpace];
     
     // Reset delegate, if set earlier
     [FlurryAds setAdDelegate:nil];
-
+    
     // Let's calculate the new position and size
     CGRect superViewFrameNew = self.webView.superview.frame;
     CGRect webViewFrameNew = superViewFrameNew;
@@ -135,7 +161,7 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
     self.webView.frame = webViewFrameNew;
     
     self.adShow = NO;
-
+    
 	// Call the success callback that was passed in through the javascript.
 	pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
@@ -150,11 +176,12 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
     
     BOOL isTesting = [[arguments objectAtIndex:IS_TESTING_ARG_INDEX] boolValue];
     [FlurryAds enableTestAds:isTesting];
-
+    self.showAdOnReceive = [[arguments objectAtIndex:SHOW_AD_ON_RECEIVE_ARG_INDEX] boolValue];
+    
     // Fetch and display banner ad for a given ad space. Note: Choose an adspace name that
     // will uniquely identifiy the ad's placement within your app
     //[FlurryAds fetchAdForSpace:@"BANNER_MAIN_VIEW" frame:self.webView.superview.frame size:self.adSize];
-
+    
 	pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 }
@@ -169,10 +196,21 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
     NSString* bannerAdSpace = ((self.adSize == BANNER_TOP)?topBannerSpace:bottomBannerSpace);
 	BOOL toShow = [[arguments objectAtIndex:SHOW_AD_ARG_INDEX] boolValue];
     if(toShow) {
-        //[FlurryAds displayAdForSpace:@"BANNER_MAIN_VIEW" onView:self.webView.superview];
-        [FlurryAds fetchAndDisplayAdForSpace:bannerAdSpace
-                                        view:self.webView.superview
-                                        size:self.adSize];
+        bool bannerSpaceReady = [FlurryAds adReadyForSpace:bannerAdSpace];
+        bool intersitialSpaceReady = [FlurryAds adReadyForSpace:interstitialAdSpace];
+        if (bannerSpaceReady) {
+            [FlurryAds displayAdForSpace:bannerAdSpace onView:self.webView.superview];
+        } else if (intersitialSpaceReady) {
+            [FlurryAds displayAdForSpace:interstitialAdSpace onView:self.webView.superview];
+        } else {
+            // return an error if there is nothing to show or we are not ready
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString: @"There were no ads ready to display"];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+            //[FlurryAds displayAdForSpace:@"BANNER_MAIN_VIEW" onView:self.webView.superview];
+            //[FlurryAds fetchAndDisplayAdForSpace:bannerAdSpace
+            //view:self.webView.superview
+            //size:self.adSize];
+        }
         
         self.adShow = YES;
         
@@ -227,16 +265,16 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 	NSString *callbackId = command.callbackId;
 	NSArray* arguments = command.arguments;
     
-    [FlurryAds fetchAdForSpace:interstitialAdSpace frame:self.webView.superview.frame size:FULLSCREEN];
-    
 	BOOL isTesting = [[arguments objectAtIndex:IS_TESTING_ARG_INDEX] boolValue];
+    [FlurryAds enableTestAds:isTesting];
+    self.showAdOnReceive = [[arguments objectAtIndex:SHOW_AD_ON_RECEIVE_ARG_INDEX] boolValue];
+    
 	NSDictionary *extrasDictionary = nil;
 	if ([arguments objectAtIndex:EXTRAS_ARG_INDEX]) {
 		extrasDictionary = [NSDictionary dictionaryWithDictionary:[arguments objectAtIndex:EXTRAS_ARG_INDEX]];
 	}
     
-    [FlurryAds enableTestAds:isTesting];
-    [FlurryAds fetchAndDisplayAdForSpace:interstitialAdSpace view:self.webView.superview size:FULLSCREEN];
+    [FlurryAds fetchAdForSpace:interstitialAdSpace frame:self.webView.superview.frame size:FULLSCREEN];
     
 	pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
 	[self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
@@ -259,7 +297,7 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
     [FlurryAds setAdDelegate:self];
     
     NSString* bannerAdSpace = ((self.adSize == BANNER_TOP)?topBannerSpace:bottomBannerSpace);
-
+    
     // Fetch and display banner ad for a given ad space. Note: Choose an adspace name that
     // will uniquely identifiy the ad's placement within your app
     [FlurryAds fetchAndDisplayAdForSpace:bannerAdSpace view:self.webView.superview size:self.adSize];
@@ -323,7 +361,7 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 - (void)resizeViews {
 	// If the banner hasn't been created yet, no need for resizing views.
     //return;
-
+    
 	// If the ad is not showing or the ad is hidden, we don't want to resize anything.
 	BOOL adIsShowing = self.adShow;
     
@@ -379,7 +417,7 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
         
     } else {
         webViewFrameNew = superViewFrameNew;
-
+        
         NSLog(@"webview: %d x %d",
               (int) webViewFrameNew.size.width, (int) webViewFrameNew.size.height );
         
@@ -396,7 +434,9 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 
 - (void) spaceDidReceiveAd:(NSString*)adSpace {
     // Received Ad
-    [FlurryAds displayAdForSpace:adSpace onView:self.webView.superview];
+    if (self.showAdOnReceive) {
+        [FlurryAds displayAdForSpace:adSpace onView:self.webView.superview];
+    }
     
 	NSLog(@"%s: Received ad successfully.", __PRETTY_FUNCTION__);
 	[self writeJavascript:@"cordova.fireDocumentEvent('onReceiveAd');"];
@@ -404,11 +444,11 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 
 - (void) spaceDidFailToReceiveAd:(NSString*) adSpace error:(NSError *)error {
 	NSLog(@"%s: Failed to receive ad with error: %@",
-			__PRETTY_FUNCTION__, [error localizedFailureReason]);
+          __PRETTY_FUNCTION__, [error localizedFailureReason]);
 	// Since we're passing error back through Cordova, we need to set this up.
 	NSString *jsString =
-		@"cordova.fireDocumentEvent('onFailedToReceiveAd',"
-		@"{ 'error': '%@' });";
+    @"cordova.fireDocumentEvent('onFailedToReceiveAd',"
+    @"{ 'error': '%@' });";
 	[self writeJavascript:[NSString stringWithFormat:jsString, [error localizedFailureReason]]];
 }
 
@@ -449,10 +489,10 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 - (void)dealloc {
 	[[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
 	[[NSNotificationCenter defaultCenter]
-		removeObserver:self
-		name:UIDeviceOrientationDidChangeNotification
-		object:nil];
-
+     removeObserver:self
+     name:UIDeviceOrientationDidChangeNotification
+     object:nil];
+    
     [FlurryAds setAdDelegate:nil];
 }
 

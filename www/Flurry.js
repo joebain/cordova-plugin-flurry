@@ -35,6 +35,25 @@ flurryExport.AD_SIZE = {
 };
 
 /**
+ * Start the flurry session. This sets the publisher key and says whether we
+ * want to use test ads or real ones.
+ *
+ * @param {Object} options
+ * @param {string} options.publisherId The Flurry publisher id key. This is different for iOS and Android.
+ * @param {bool} options.testing [false] Are we in test mode?
+ */
+flurryExport.startSession =
+	function(options, success, error) {
+	cordova.exec(
+		success, error, 'Flurry', 'startSession',
+		[
+			options.publisherId || "",
+			options.testing || false
+		]
+	);
+};
+
+/**
  * Creates a new Flurry banner view.
  *
  * @param {!Object} options The options used to create a banner.  They should

@@ -13,7 +13,8 @@
 #define BANNER_AT_TOP_ARG_INDEX   2
 
 #define IS_TESTING_ARG_INDEX      0
-#define EXTRAS_ARG_INDEX          1
+#define SHOW_AD_ON_RECEIVE_ARG_INDEX 1
+#define EXTRAS_ARG_INDEX          2
 
 #define SHOW_AD_ARG_INDEX    0
 
@@ -28,7 +29,9 @@
 @property (assign) BOOL bannerAtTop;
 @property (assign) int adSize;
 @property (assign) BOOL adShow;
+@property (assign) BOOL showAdOnReceive;
 
+- (void)startSession:(CDVInvokedUrlCommand *)command;
 - (void)createBannerView:(CDVInvokedUrlCommand *)command;
 - (void)destroyBannerView:(CDVInvokedUrlCommand *)command;
 - (void)requestAd:(CDVInvokedUrlCommand *)command;
