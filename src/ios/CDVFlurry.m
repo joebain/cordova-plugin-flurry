@@ -1,4 +1,4 @@
-#import "CDVFlurry.h"
+ #import "CDVFlurry.h"
 #import "Flurry.h"
 #import "FlurryAds.h"
 #import "FlurryAdDelegate.h"
@@ -199,9 +199,11 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
         bool bannerSpaceReady = [FlurryAds adReadyForSpace:bannerAdSpace];
         bool intersitialSpaceReady = [FlurryAds adReadyForSpace:interstitialAdSpace];
         if (bannerSpaceReady) {
-            [FlurryAds displayAdForSpace:bannerAdSpace onView:self.webView.superview];
+            //[FlurryAds displayAdForSpace:bannerAdSpace onView:self.webView.superview];
+            [FlurryAds displayAdForSpace:bannerAdSpace onView:self.webView.superview viewControllerForPresentation:self.viewController];
         } else if (intersitialSpaceReady) {
-            [FlurryAds displayAdForSpace:interstitialAdSpace onView:self.webView.superview];
+            [FlurryAds displayAdForSpace:interstitialAdSpace onView:self.webView.superview viewControllerForPresentation:self.viewController];
+            //[FlurryAds displayAdForSpace:interstitialAdSpace onView:self.webView.superview];
         } else {
             // return an error if there is nothing to show or we are not ready
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString: @"There were no ads ready to display"];
@@ -300,7 +302,7 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
     
     // Fetch and display banner ad for a given ad space. Note: Choose an adspace name that
     // will uniquely identifiy the ad's placement within your app
-    [FlurryAds fetchAndDisplayAdForSpace:bannerAdSpace view:self.webView.superview size:self.adSize];
+    [FlurryAds fetchAndDisplayAdForSpace:bannerAdSpace view:self.webView.superview viewController:self.viewController size:self.adSize];
     
     [self resizeViews];
 }
@@ -435,7 +437,7 @@ NSString* bottomBannerSpace = @"BOTTOM_BANNER";
 - (void) spaceDidReceiveAd:(NSString*)adSpace {
     // Received Ad
     if (self.showAdOnReceive) {
-        [FlurryAds displayAdForSpace:adSpace onView:self.webView.superview];
+        [FlurryAds displayAdForSpace:adSpace onView:self.webView.superview viewControllerForPresentation:self.viewController];
     }
     
 	NSLog(@"%s: Received ad successfully.", __PRETTY_FUNCTION__);
