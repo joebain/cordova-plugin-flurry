@@ -49,6 +49,7 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
   private static final String LOGTAG = "Flurry";
 
   /** Cordova Actions. */
+  private static final String ACTION_START_SESSION = "startSession";
   private static final String ACTION_CREATE_BANNER_VIEW = "createBannerView";
   private static final String ACTION_CREATE_INTERSTITIAL_VIEW = "createInterstitialView";
   private static final String ACTION_DESTROY_BANNER_VIEW = "destroyBannerView";
@@ -80,7 +81,9 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
   public boolean execute(String action, JSONArray inputs, CallbackContext callbackContext) throws JSONException {
 	  
     PluginResult result = null;
-    if (ACTION_CREATE_BANNER_VIEW.equals(action)) {
+	if (ACTION_START_SESSION.equals(action)) {
+		result = executeStartSession(inputs, callbackContext);
+	} else if (ACTION_CREATE_BANNER_VIEW.equals(action)) {
       result = executeCreateBannerView(inputs, callbackContext);
       
     } else if (ACTION_DESTROY_BANNER_VIEW.equals(action)) {
@@ -108,6 +111,34 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
     }
     
     return true;
+  }
+
+  private PluginResult executeStartSession(JSONArray inputs, CallbackContext callbackContext) {
+	  Log.w(LOGTAG, "executeStartSession");
+
+	  String publisherId;
+	  boolean isTesting;
+
+	  try {
+		  publisherId = inputs.getString(0);
+		  isTesting = inputs.getBoolean(1);
+	  } catch (JSONException exception) {
+		  Log.w(LOGTAG, String.format("Got JSON Exception: %s", exception.getMessage()));
+		  return new PluginResult(Status.JSON_EXCEPTION);
+	  }
+
+	  FlurryAds.setAdListener(this);
+	  FlurryAgent.onStartSession(cordova.getActivity(), publisherId);
+	  if (isTesting) {
+		  FlurryAds.enableTestAds(true);
+		  FlurryAgent.setLogEnabled(true);
+		  FlurryAgent.setLogEvents(true);
+		  FlurryAgent.setLogLevel(Log.VERBOSE);
+	  }
+
+	  callbackContext.success();
+
+	  return null;
   }
 
   /**
@@ -382,6 +413,30 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
   private PluginResult executeRequestInterstitialAd(JSONArray inputs, CallbackContext callbackContext) {
   	Log.w(LOGTAG, "executeRequestInterstitialAd");
 
+    if(adView == null) {
+    	Log.w(LOGTAG, "new FrameLayout");
+        adView = new FrameLayout(cordova.getActivity());
+    	FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+    			LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+    	params.gravity = Gravity.TOP;
+    	adView.setLayoutParams(params);
+		
+		adSize = FlurryAdSize.FULLSCREEN;
+		adSpace = adFull;
+
+		// Create the AdView on the UI thread.
+		cordova.getActivity().runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				ViewGroup parentView = (ViewGroup) webView.getParent();
+				if (parentView != null) {
+					parentView.removeView(adView);
+				}
+				parentView.addView(adView, 0);
+			}
+		});
+    }
+    
   	return executeRequestAd(inputs, callbackContext);
   }
   /**
@@ -521,6 +576,7 @@ public class Flurry extends CordovaPlugin implements FlurryAdListener {
 			}
 			adView = null;
 		}
+		FlurryAgent.onEndSession(cordova.getActivity());
 		super.onDestroy();
 	}
 
